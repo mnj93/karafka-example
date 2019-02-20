@@ -1,6 +1,8 @@
 class UserResponder < ApplicationResponder
     topic :test
     def respond(user)
-        respond_to :test, user.to_json
+        data = {"user" => user}
+        binding.pry
+        respond_to :test, data.to_json
     end
 end
