@@ -1,10 +1,20 @@
 # frozen_string_literal: true
 
 # Non Ruby on Rails setup
-ENV['RACK_ENV'] ||= 'development'
-ENV['KARAFKA_ENV'] ||= ENV['RACK_ENV']
-Bundler.require(:default, ENV['KARAFKA_ENV'])
-Karafka::Loader.load(Karafka::App.root)
+ENV['RAILS_ENV'] ||= 'development'
+ENV['KARAFKA_ENV'] = ENV['RAILS_ENV']
+
+require ::File.expand_path('../config/environment', __FILE__)
+Rails.application.eager_load!
+
+# This lines will make Karafka print to stdout like puma or unicorn
+if Rails.env.development?
+  Rails.logger.extend(
+    ActiveSupport::Logger.broadcast(
+      ActiveSupport::Logger.new($stdout)
+    )
+  )
+end
 
 # Ruby on Rails setup
 # Remove whole non-Rails setup that is above and uncomment the 4 lines below
@@ -33,7 +43,6 @@ class KarafkaApp < Karafka::App
   # notifications add extra boilerplate, if you want to achieve max performance,
   # listen to only what you really need for given environment.
   Karafka.monitor.subscribe(Karafka::Instrumentation::Listener)
-
   consumer_groups.draw do
     # topic :example do
     #   consumer ExampleConsumer
@@ -48,7 +57,18 @@ class KarafkaApp < Karafka::App
     #     consumer Test2Consumer
     #   end
     # end
+
+    consumer_group :test_group do
+      topic :test do
+        consumer UserConsumer
+        start_from_beginning true
+        batch_consuming false
+      end
+    end
   end
 end
-
 KarafkaApp.boot!
+
+WaterDrop.setup do |waterdrop_config|
+  waterdrop_config.logger = Rails.logger
+end
